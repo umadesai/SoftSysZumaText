@@ -6,6 +6,7 @@ The goal of this project is to build our own text editor that effectively implem
 
  ## Learning Goals
 We want to:
+
 Learn C and get more comfortable using the language.
 
 Learn how to build a text editor from scratch.
@@ -18,7 +19,8 @@ The primary resource we will be using for getting started on the foundation of t
 
 
 ## First Steps
-Initialize the project.
+
+Complete the setup of the project.
 
 Read the tutorial.
 
@@ -27,9 +29,10 @@ Enter raw modes.
 Both of us will go through all the steps.
 
 ### Definition of done
+
 Executable code pushed to github.
 
-Understand the concepts covered in first steps.
+Having an understanding of the concepts covered in the steps.
 
-Being able to type something in the editor.
+Being able to observe the changes made in the editor.
 
