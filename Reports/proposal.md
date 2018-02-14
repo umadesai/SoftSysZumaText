@@ -1,4 +1,4 @@
-ZumaText Project Proposal
+## ZumaText Project Proposal
 
 ## Goal
 The goal of this project is to build our own text editor that effectively implements all of the basic features expected of a minimal editor. Our stretch goal is to add more advanced features that build off of the basic Kilo tutorial.
@@ -6,9 +6,11 @@ The goal of this project is to build our own text editor that effectively implem
 
  ## Learning Goals
 We want to:
-Learn C and get more comfortable using the language
-Learn how to build a text editor from scratch
-Learn how to communicate the program with short cuts
+Learn C and get more comfortable using the language.
+
+Learn how to build a text editor from scratch.
+
+Learn how to communicate the program with short cuts.
 
 
 ## Resources
@@ -16,12 +18,18 @@ The primary resource we will be using for getting started on the foundation of t
 
 
 ## First Steps
-Initialize the project
-Read the tutorial
-Enter raw modes
+Initialize the project.
+
+Read the tutorial.
+
+Enter raw modes.
+
 Both of us will go through all the steps.
 
 ### Definition of done
-Executable code pushed to github
-Understand the concepts covered in first steps
-Being able to type something in the editor
+Executable code pushed to github.
+
+Understand the concepts covered in first steps.
+
+Being able to type something in the editor.
+
