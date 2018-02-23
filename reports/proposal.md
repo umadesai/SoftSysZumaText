@@ -1,6 +1,6 @@
 ## ZumaText Project Proposal
 
-## Uma Desai & Zhengyang Feng
+### Uma Desai & Zhengyang Feng
 
 ## Goal
 The goal of this project is to build our own text editor that effectively implements all of the basic features expected of a minimal editor. Our stretch goal is to add more advanced features that build off of the basic Kilo tutorial.
