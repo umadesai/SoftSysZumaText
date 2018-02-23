@@ -1,5 +1,7 @@
 ## ZumaText Project Proposal
 
+## Uma Desai & Zhengyang Feng
+
 ## Goal
 The goal of this project is to build our own text editor that effectively implements all of the basic features expected of a minimal editor. Our stretch goal is to add more advanced features that build off of the basic Kilo tutorial.
 
@@ -18,7 +20,7 @@ The primary resource we will be using for getting started on the foundation of t
 
 
 ## First Steps
-Initialize the project.
+Initialize the project on github.
 
 Read the tutorial.
 
@@ -26,7 +28,7 @@ Enter raw modes.
 
 Both of us will go through all the steps.
 
-### Definition of done
+### Our definition of done
 Executable code pushed to github.
 
 Understand the concepts covered in first steps.
