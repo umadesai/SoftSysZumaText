@@ -112,9 +112,10 @@ void editorRefreshScreen(){
 int main(){
   enableRawMode();
   initEditor();
+  int response;
   do {
     editorRefreshScreen();
-    response = editorProcessKeypress();
+    response = editorProcessKeyPress();
   } while (!response);
 
   return 0;
