@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <termios.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <sys/ioctl.h>
@@ -66,6 +67,25 @@ int getWindowSize(int *n_row, int *n_col) {
     *n_row = ws.ws_row;
     return 0;
   }
+}
+
+// append buffer
+struct abuf {
+  char *b;
+  int len;
+};
+#define ABUF_INIT {NULL, 0}
+
+void abAppend(struct abuf *ab, const char *s, int len) {
+  char *new = realloc(ab->b, ab->len + len);
+  if (new == NULL) return;
+  memcpy(&new[ab->len], s, len);
+  ab->b = new;
+  ab->len += len;
+}
+
+void abFree(struct abuf *ab) {
+  free(ab->b);
 }
 
 // prompt for key
