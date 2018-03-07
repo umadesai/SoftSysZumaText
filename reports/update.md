@@ -8,6 +8,7 @@ The goal of this project is to build our own text editor that effectively implem
 
 ## Learning Goals
 We want to:
+
 Learn new C tools and get more comfortable using the language in a UNIX environment.
 
 Learn how to build a text editor from scratch using system calls and other functions.
