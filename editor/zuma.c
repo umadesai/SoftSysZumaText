@@ -19,7 +19,9 @@ enum editorKey {
   ARROW_LEFT = 1000,
   ARROW_RIGHT,
   ARROW_UP,
-  ARROW_DOWN
+  ARROW_DOWN,
+  PAGE_UP,
+  PAGE_DOWN
 };
 
 struct editorConfig {
@@ -130,16 +132,16 @@ int editorReadKey() {
 void editorMoveCursor(int key) {
   switch (key) {
     case ARROW_LEFT:
-      conf.cx--;
+      if (conf.cx != 0) conf.cx--;
       break;
     case ARROW_RIGHT:
-      conf.cx++;
+      if (conf.cx != conf.screencols - 1) conf.cx++;
       break;
     case ARROW_UP:
-      conf.cy--;
+      if (conf.cy != 0) conf.cy--;
       break;
     case ARROW_DOWN:
-      conf.cy++;
+      if (conf.cy != conf.screenrows - 1) conf.cy++;
       break;
   }
 }
