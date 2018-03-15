@@ -40,9 +40,8 @@ struct editorRow {
 
 struct editorConfig {
   int cx, cy;
-  int rowoff;
-  int screenrows;
-  int screencols;
+  int rowoff, coloff;
+  int screenrows, screencols;
   int nrows;
   struct editorRow* row;
   struct termios orig_termios;
@@ -211,12 +210,14 @@ int editorReadKey() {
 }
 
 void editorMoveCursor(int key) {
+  struct editorRow *row = (conf.cy >= conf.nrows) ? NULL : &conf.row[conf.cy];
   switch (key) {
     case ARROW_LEFT:
       if (conf.cx != 0) conf.cx--;
       break;
     case ARROW_RIGHT:
-      if (conf.cx != conf.screencols - 1) conf.cx++;
+      // limit scrolling
+      if (row && conf.cx < row->size) conf.cx++;
       break;
     case ARROW_UP:
       if (conf.cy != 0) conf.cy--;
@@ -261,10 +262,9 @@ int editorProcessKeyPress(){
 }
 
 void initEditor() {
-  conf.cx = 0;
-  conf.cy = 0;
+  conf.cx = conf.cy = 0;
   conf.nrows = 0;
-  conf.rowoff = 0;
+  conf.rowoff = conf.coloff = 0;
   conf.row = NULL;
   if (getWindowSize(&conf.screenrows, &conf.screencols) == -1) die("getWindowSize");
 }
@@ -291,9 +291,11 @@ void editorDrawRows(struct abuf *ab) {
         abAppend(ab, "~", 1);
       }
     } else {
-      int len = conf.row[y+conf.rowoff].size;
+      // adjustment
+      int len = conf.row[y+conf.rowoff].size - conf.coloff;
+      len = (len < 0) ? 0 : len;
       if (len > conf.screencols) len = conf.screencols;
-      abAppend(ab, conf.row[y+conf.rowoff].chars, len);
+      abAppend(ab, &conf.row[y+conf.rowoff].chars[conf.coloff], len);
     }
     // clear lines one at a time
     abAppend(ab, "\x1b[K", 3);
@@ -312,8 +314,18 @@ void editorVScroll() {
   }
 }
 
+void editorHScroll(){
+  if (conf.cx < conf.coloff) {
+    conf.coloff = conf.cx;
+  }
+  if (conf.cx >= conf.coloff + conf.screencols) {
+    conf.coloff = conf.cx - conf.screencols + 1;
+  }
+}
+
 void editorRefreshScreen(){
   editorVScroll();
+  editorHScroll();
   struct abuf ab = ABUF_INIT;
 
   abAppend(&ab, "\x1b[?25l", 6);
@@ -323,7 +335,9 @@ void editorRefreshScreen(){
 
   // move the cursor to .cx,.cy position
   char buf[32];
-  snprintf(buf, sizeof(buf), "\x1b[%d;%dH", conf.cy + 1 - conf.rowoff, conf.cx + 1);
+  snprintf(buf, sizeof(buf), "\x1b[%d;%dH",
+           conf.cy + 1 - conf.rowoff,
+           conf.cx + 1 - conf.coloff);
   abAppend(&ab, buf, strlen(buf));
 
   abAppend(&ab, "\x1b[H", 3);
