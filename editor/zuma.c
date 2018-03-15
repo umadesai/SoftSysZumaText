@@ -40,6 +40,7 @@ struct editorRow {
 
 struct editorConfig {
   int cx, cy;
+  int rowoff;
   int screenrows;
   int screencols;
   int nrows;
@@ -221,7 +222,7 @@ void editorMoveCursor(int key) {
       if (conf.cy != 0) conf.cy--;
       break;
     case ARROW_DOWN:
-      if (conf.cy != conf.screenrows - 1) conf.cy++;
+      if (conf.cy < conf.nrows) conf.cy++;
       break;
   }
 }
@@ -263,6 +264,7 @@ void initEditor() {
   conf.cx = 0;
   conf.cy = 0;
   conf.nrows = 0;
+  conf.rowoff = 0;
   conf.row = NULL;
   if (getWindowSize(&conf.screenrows, &conf.screencols) == -1) die("getWindowSize");
 }
@@ -272,7 +274,7 @@ void initEditor() {
 void editorDrawRows(struct abuf *ab) {
   int y;
   for (y = 0; y < conf.screenrows; y++) {
-    if (y >= conf.nrows) {
+    if (y + conf.rowoff >= conf.nrows) {
       if (y == conf.screenrows / 3) {
         char welcome[80];
         int welcomelen = snprintf(welcome, sizeof(welcome),
@@ -289,9 +291,9 @@ void editorDrawRows(struct abuf *ab) {
         abAppend(ab, "~", 1);
       }
     } else {
-      int len = conf.row[y].size;
+      int len = conf.row[y+conf.rowoff].size;
       if (len > conf.screencols) len = conf.screencols;
-      abAppend(ab, conf.row[y].chars, len);
+      abAppend(ab, conf.row[y+conf.rowoff].chars, len);
     }
     // clear lines one at a time
     abAppend(ab, "\x1b[K", 3);
@@ -301,7 +303,17 @@ void editorDrawRows(struct abuf *ab) {
   }
 }
 
+void editorVScroll() {
+  if (conf.cy < conf.rowoff) {
+    conf.rowoff = conf.cy;
+  }
+  if (conf.cy >= conf.rowoff + conf.screenrows) {
+    conf.rowoff = conf.cy - conf.screenrows + 1;
+  }
+}
+
 void editorRefreshScreen(){
+  editorVScroll();
   struct abuf ab = ABUF_INIT;
 
   abAppend(&ab, "\x1b[?25l", 6);
@@ -311,7 +323,7 @@ void editorRefreshScreen(){
 
   // move the cursor to .cx,.cy position
   char buf[32];
-  snprintf(buf, sizeof(buf), "\x1b[%d;%dH", conf.cy + 1, conf.cx + 1);
+  snprintf(buf, sizeof(buf), "\x1b[%d;%dH", conf.cy + 1 - conf.rowoff, conf.cx + 1);
   abAppend(&ab, buf, strlen(buf));
 
   abAppend(&ab, "\x1b[H", 3);
