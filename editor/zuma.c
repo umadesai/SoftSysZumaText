@@ -166,21 +166,48 @@ void enableRawMode(){
   if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) die("tcsetattr");
 }
 
+int getCursorPosition(int *n_row, int *n_col) {
+  char buf[32];
+  unsigned int i = 0;
+  if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4) return -1;
+  while (i < sizeof(buf) - 1) {
+    if (read(STDIN_FILENO, &buf[i], 1) != 1) break;
+    if (buf[i] == 'R') break;
+    i++;
+  }
+  buf[i] = '\0';
+  if (buf[0] != '\x1b' || buf[1] != '[') return -1;
+  if (sscanf(&buf[2], "%d;%d", n_row, n_col) != 2) return -1;
+  return 0;
+}
+
 // window resize
 int getWindowSize(int *n_row, int *n_col) {
   struct winsize ws;
-  int flag = 0;
-  if ((flag = ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws)) != 0) {
-    // TODO: Unsupported OS
-    return flag;
-  } else if (ws.ws_col == 0) {
-    // TODO: System panic
-    return -1;
+
+  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
+    if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12) return -1;
+    return getCursorPosition(n_row, n_col);
+    // editorReadKey();
+    // return -1;
   } else {
     *n_col = ws.ws_col;
     *n_row = ws.ws_row;
     return 0;
   }
+
+  // int flag = 0;
+  // if ((flag = ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws)) != 0) {
+  //   // TODO: Unsupported OS
+  //   return flag;
+  // } else if (ws.ws_col == 0) {
+  //   // TODO: System panic
+  //   return -1;
+  // } else {
+  //   *n_col = ws.ws_col;
+  //   *n_row = ws.ws_row;
+  //   return 0;
+  // }
 }
 
 // append buffer
