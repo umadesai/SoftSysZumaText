@@ -20,6 +20,7 @@
 #define DRAW_TILDES(str, n_bytes) write(STDOUT_FILENO, str, (n_bytes))
 
 #define ZUMA_VERSION "0.0.1"
+#define ZUMA_TAB_STOP 4
 
 enum editorKey {
   ARROW_LEFT = 1000,
@@ -35,11 +36,14 @@ enum editorKey {
 
 struct editorRow {
   int size;
+  int rsize;
   char* chars;
+  char* render;
 };
 
 struct editorConfig {
   int cx, cy;
+  int rx;
   int rowoff, coloff;
   int screenrows, screencols;
   int nrows;
@@ -60,6 +64,33 @@ void die(const char *s) {
   exit(1);
 }
 
+int editorRowCxToRx(struct editorRow *row, int cx) {
+  int rx = 0;
+  for (int j = 0; j < cx; j++) {
+    if (row->chars[j] == '\t')
+      rx += (ZUMA_TAB_STOP - 1) - (rx % ZUMA_TAB_STOP);
+    rx++;
+  }
+  return rx;
+}
+
+void editorUpdateRow(struct editorRow *row) {
+  int tabs = 0;
+  for (int j = 0; j < row->size; j++) if (row->chars[j] == '\t') tabs++;
+  free(row->render);
+  row->render = malloc(row->size + tabs * (ZUMA_TAB_STOP - 1) + 1);
+  int index = 0;
+  for (int j = 0; j < row->size; j++) {
+    if (row->chars[j] == '\t') {
+      row->render[index++] = ' ';
+      while (index % ZUMA_TAB_STOP  != 0) row->render[index++] = ' ';
+    } else {
+      row->render[index++] = row->chars[j];
+    }
+  }
+  row->render[index] = '\0';
+  row->rsize = index;
+}
 
 void editorAppendRow(char *line, size_t linelen) {
   conf.row = realloc(conf.row, sizeof(struct editorRow) * (conf.nrows + 1));
@@ -68,8 +99,11 @@ void editorAppendRow(char *line, size_t linelen) {
   conf.row[loc].chars = malloc(linelen + 1);
   memcpy(conf.row[loc].chars, line, linelen);
   conf.row[loc].chars[linelen] = '\0';
-  conf.nrows++;
 
+  conf.row[loc].rsize = 0;
+  conf.row[loc].render = NULL;
+  editorUpdateRow(&conf.row[loc]);
+  conf.nrows++;
   // raw output
   // conf.row.size = linelen;
   // conf.row.chars = malloc(linelen + 1);
@@ -271,7 +305,7 @@ int editorProcessKeyPress(){
 }
 
 void initEditor() {
-  conf.cx = conf.cy = 0;
+  conf.rx = conf.cx = conf.cy = 0;
   conf.nrows = 0;
   conf.rowoff = conf.coloff = 0;
   conf.row = NULL;
@@ -301,10 +335,10 @@ void editorDrawRows(struct abuf *ab) {
       }
     } else {
       // adjustment
-      int len = conf.row[y+conf.rowoff].size - conf.coloff;
+      int len = conf.row[y+conf.rowoff].rsize - conf.coloff;
       len = (len < 0) ? 0 : len;
       if (len > conf.screencols) len = conf.screencols;
-      abAppend(ab, &conf.row[y+conf.rowoff].chars[conf.coloff], len);
+      abAppend(ab, &conf.row[y+conf.rowoff].render[conf.coloff], len);
     }
     // clear lines one at a time
     abAppend(ab, "\x1b[K", 3);
@@ -315,6 +349,10 @@ void editorDrawRows(struct abuf *ab) {
 }
 
 void editorVScroll() {
+  conf.rx = 0;
+  if (conf.cy < conf.nrows) {
+    conf.rx = editorRowCxToRx(&conf.row[conf.cy], conf.cx);
+  }
   if (conf.cy < conf.rowoff) {
     conf.rowoff = conf.cy;
   }
@@ -325,10 +363,10 @@ void editorVScroll() {
 
 void editorHScroll(){
   if (conf.cx < conf.coloff) {
-    conf.coloff = conf.cx;
+    conf.coloff = conf.rx;
   }
   if (conf.cx >= conf.coloff + conf.screencols) {
-    conf.coloff = conf.cx - conf.screencols + 1;
+    conf.coloff = conf.rx - conf.screencols + 1;
   }
 }
 
@@ -346,7 +384,7 @@ void editorRefreshScreen(){
   char buf[32];
   snprintf(buf, sizeof(buf), "\x1b[%d;%dH",
            conf.cy + 1 - conf.rowoff,
-           conf.cx + 1 - conf.coloff);
+           conf.rx + 1 - conf.coloff);
   abAppend(&ab, buf, strlen(buf));
 
   abAppend(&ab, "\x1b[H", 3);
