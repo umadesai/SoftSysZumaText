@@ -111,7 +111,7 @@ void editorAppendRow(char *line, size_t linelen) {
   conf.row[loc].rsize = 0;
   conf.row[loc].render = NULL;
   editorUpdateRow(&conf.row[loc]);
-  conf.nrows++; cond.dirty++;
+  conf.nrows++; conf.dirty++;
   // raw output
   // conf.row.size = linelen;
   // conf.row.chars = malloc(linelen + 1);
@@ -119,6 +119,32 @@ void editorAppendRow(char *line, size_t linelen) {
   // conf.row.chars[linelen] = '\0';
   // conf.nrows = 1;
 }
+
+char *editorRowsToString(int *buflen) {
+  int totlen = 0;
+  int j;
+  for (j = 0; j < conf.nrows; j++)
+    totlen += conf.row[j].size + 1;
+  *buflen = totlen;
+  char *buf = malloc(totlen);
+  char *p = buf;
+  for (j = 0; j < conf.nrows; j++) {
+    memcpy(p, conf.row[j].chars, conf.row[j].size);
+    p += conf.row[j].size;
+    *p = '\n';
+    p++;
+  }
+  return buf;
+}
+
+void editorSetStatusMessage(const char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  vsnprintf(conf.statusmsg, sizeof(conf.statusmsg), fmt, ap);
+  va_end(ap);
+  conf.statusmsg_time = time(NULL);
+}
+
 
 void editorOpen(char* filename) {
 
@@ -334,14 +360,59 @@ void editorMoveCursor(int key) {
 }
 
 
-void editorRowInsertChar(erow *row, int at, int c) {
+void editorRowInsertChar(struct editorRow *row, int at, int c) {
   if (at < 0 || at > row->size) at = row->size;
   row->chars = realloc(row->chars, row->size + 2);
   memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
   row->size++;
   row->chars[at] = c;
   editorUpdateRow(row);
-  E.dirty++;
+  conf.dirty++;
+}
+
+void editorRowDelChar(struct editorRow *row, int loc) {
+  if (loc < 0 || loc >= row->size) return;
+  memmove(&row->chars[loc], &row->chars[loc + 1], row->size - loc);
+  row->size--;
+  editorUpdateRow(row);
+  conf.dirty++;
+}
+
+void editorFreeRow(struct editorRow *row) {
+  free(row->render);
+  free(row->chars);
+}
+void editorDelRow(int loc) {
+  if (loc < 0 || loc >= conf.nrows) return;
+  editorFreeRow(&conf.row[loc]);
+  memmove(&conf.row[loc], &conf.row[loc + 1],
+    sizeof(struct editorRow) * (conf.nrows - loc - 1));
+  conf.nrows--;
+  conf.dirty++;
+}
+
+void editorRowAppendString(struct editorRow *row, char *s, size_t len) {
+  row->chars = realloc(row->chars, row->size + len + 1);
+  memcpy(&row->chars[row->size], s, len);
+  row->size += len;
+  row->chars[row->size] = '\0';
+  editorUpdateRow(row);
+  conf.dirty++;
+}
+
+void editorDelChar() {
+  if (conf.cy == conf.nrows) return;
+  if (conf.cx == 0 && conf.cy == 0) return;
+  struct editorRow *row = &conf.row[conf.cy];
+  if (conf.cx > 0) {
+    editorRowDelChar(row, conf.cx - 1);
+    conf.cx--;
+  } else {
+    conf.cx = conf.row[conf.cy - 1].size;
+    editorRowAppendString(&conf.row[conf.cy - 1], row->chars, row->size);
+    editorDelRow(conf.cy);
+    conf.cy--;
+  }
 }
 
 void editorInsertChar(int c) {
@@ -352,22 +423,7 @@ void editorInsertChar(int c) {
   conf.cx++;
 }
 
-char *editorRowsToString(int *buflen) {
-  int totlen = 0;
-  int j;
-  for (j = 0; j < conf.nrows; j++)
-    totlen += conf.row[j].size + 1;
-  *buflen = totlen;
-  char *buf = malloc(totlen);
-  char *p = buf;
-  for (j = 0; j < conf.nrows; j++) {
-    memcpy(p, conf.row[j].chars, conf.row[j].size);
-    p += conf.row[j].size;
-    *p = '\n';
-    p++;
-  }
-  return buf;
-}
+
 
 
 // prompt for signal processing
@@ -404,6 +460,8 @@ int editorProcessKeyPress(){
     case BACKSPACE:
     case CTRL_KEY('h'):
     case DEL_KEY:
+      if (c == DEL_KEY) editorMoveCursor(ARROW_RIGHT);
+      editorDelChar();
       break;
 
 
@@ -453,13 +511,6 @@ void editorDrawMessageBar(struct abuf *ab) {
 
 
 //std arg
-void editorSetStatusMessage(const char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  vsnprintf(conf.statusmsg, sizeof(conf.statusmsg), fmt, ap);
-  va_end(ap);
-  conf.statusmsg_time = time(NULL);
-}
 
 void initEditor() {
   conf.rx = conf.cx = conf.cy = 0;
