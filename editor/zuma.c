@@ -2,7 +2,7 @@
 #define _BSD_SOURCE
 #define _GNU_SOURCE
 
-
+#include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
 #include <termios.h>
@@ -23,8 +23,10 @@
 
 #define ZUMA_VERSION "0.0.1"
 #define ZUMA_TAB_STOP 4
+#define KILO_QUIT_TIMES 2
 
 enum editorKey {
+  BACKSPACE = 127,
   ARROW_LEFT = 1000,
   ARROW_RIGHT,
   ARROW_UP,
@@ -51,6 +53,7 @@ struct editorConfig {
   int nrows;
   struct editorRow* row;
   char *filename;
+  int dirty;
   char statusmsg[80];
   time_t statusmsg_time;
   struct termios orig_termios;
@@ -108,7 +111,7 @@ void editorAppendRow(char *line, size_t linelen) {
   conf.row[loc].rsize = 0;
   conf.row[loc].render = NULL;
   editorUpdateRow(&conf.row[loc]);
-  conf.nrows++;
+  conf.nrows++; cond.dirty++;
   // raw output
   // conf.row.size = linelen;
   // conf.row.chars = malloc(linelen + 1);
@@ -137,6 +140,28 @@ void editorOpen(char* filename) {
   }
   free(line);
   fclose(fp);
+  conf.dirty = 0;
+}
+
+void editorSave() {
+  if (!conf.filename) return;
+  int len;
+  char *buf = editorRowsToString(&len);
+  int fd = open(conf.filename, O_RDWR | O_CREAT, 0644);
+  if (fd != -1) {
+    if (ftruncate(fd, len) != -1) {
+      if (write(fd, buf, len) == len) {
+        close(fd);
+        free(buf);
+        conf.dirty = 0;
+        editorSetStatusMessage("%d bytes written to disk", len);
+        return;
+      }
+    }
+    close(fd);
+  }
+  free(buf);
+  editorSetStatusMessage("I/O error: %s", strerror(errno));
 }
 
 
@@ -308,13 +333,66 @@ void editorMoveCursor(int key) {
   if (conf.cx > rowlen) conf.cx = rowlen;
 }
 
+
+void editorRowInsertChar(erow *row, int at, int c) {
+  if (at < 0 || at > row->size) at = row->size;
+  row->chars = realloc(row->chars, row->size + 2);
+  memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
+  row->size++;
+  row->chars[at] = c;
+  editorUpdateRow(row);
+  E.dirty++;
+}
+
+void editorInsertChar(int c) {
+  if (conf.cy == conf.nrows) {
+    editorAppendRow("", 0);
+  }
+  editorRowInsertChar(&conf.row[conf.cy], conf.cx, c);
+  conf.cx++;
+}
+
+char *editorRowsToString(int *buflen) {
+  int totlen = 0;
+  int j;
+  for (j = 0; j < conf.nrows; j++)
+    totlen += conf.row[j].size + 1;
+  *buflen = totlen;
+  char *buf = malloc(totlen);
+  char *p = buf;
+  for (j = 0; j < conf.nrows; j++) {
+    memcpy(p, conf.row[j].chars, conf.row[j].size);
+    p += conf.row[j].size;
+    *p = '\n';
+    p++;
+  }
+  return buf;
+}
+
+
 // prompt for signal processing
 int editorProcessKeyPress(){
+  static int quit_times = KILO_QUIT_TIMES;
   int c = editorReadKey();
   switch (c) {
+    case '\r':
+
+      break;
+
     case CTRL_KEY('q'):
+      if (conf.dirty && quit_times > 0) {
+        editorSetStatusMessage("WARNING!!! File has unsaved changes. "
+                               "Press Ctrl-Q %d more time to quit.",
+                               quit_times);
+        quit_times--;
+        return 0;
+      }
       editorClearScreen();
       return -1;
+
+    case CTRL_KEY('s'):
+      editorSave();
+      break;
 
     case HOME_KEY:
       conf.cx = 0;
@@ -322,6 +400,17 @@ int editorProcessKeyPress(){
     case END_KEY:
       if (conf.cy < conf.nrows) conf.cx = conf.row[conf.cy].size;
       break;
+
+    case BACKSPACE:
+    case CTRL_KEY('h'):
+    case DEL_KEY:
+      break;
+
+
+    case CTRL_KEY('l'):
+    case '\x1b':
+      break;
+
 
     case ARROW_UP:
     case ARROW_DOWN:
@@ -343,7 +432,13 @@ int editorProcessKeyPress(){
       while (times--) editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
     }
       break;
+
+    default:
+      editorInsertChar(c);
+      break;
+
   }
+  quit_times = KILO_QUIT_TIMES;
   return 0;
 }
 
@@ -354,6 +449,7 @@ void editorDrawMessageBar(struct abuf *ab) {
   if (msglen && time(NULL) - conf.statusmsg_time < 5)
     abAppend(ab, conf.statusmsg, msglen);
 }
+
 
 
 //std arg
@@ -370,6 +466,7 @@ void initEditor() {
   conf.nrows = 0;
   conf.rowoff = conf.coloff = 0;
   conf.row = NULL;
+  conf.dirty = 0;
   conf.filename = NULL;
   conf.statusmsg[0] = '\0';
   conf.statusmsg_time = 0;
@@ -434,11 +531,14 @@ void editorHScroll(){
   }
 }
 
+
+
 void editorDrawStatusBar(struct abuf *ab) {
   abAppend(ab, "\x1b[7m", 4);
   char status[80], rstatus[80];
-  int len = snprintf(status, sizeof(status), "%.20s - %d lines",
-    conf.filename ? conf.filename : "[New File]", conf.nrows);
+  int len = snprintf(status, sizeof(status), "%.20s - %d lines %s",
+    conf.filename ? conf.filename : "[New File]",
+    conf.nrows, conf.dirty ? "*" : "");
   int rlen = snprintf(rstatus, sizeof(rstatus), "%d/%d",conf.cy + 1, conf.nrows);
   if (len > conf.screencols) len = conf.screencols;
   abAppend(ab, status, len);
@@ -487,7 +587,7 @@ int main(int argc, char** argv)
   initEditor();
   if (argc >= 2) editorOpen(argv[1]);
   int response;
-  editorSetStatusMessage("HELP: Ctrl-Q = quit");
+  editorSetStatusMessage("HELP: Ctrl-S = save | Ctrl-Q = quit");
 
   do {
     editorRefreshScreen();
