@@ -213,11 +213,17 @@ void editorMoveCursor(int key) {
   struct editorRow *row = (conf.cy >= conf.nrows) ? NULL : &conf.row[conf.cy];
   switch (key) {
     case ARROW_LEFT:
-      if (conf.cx != 0) conf.cx--;
+      if (conf.cx != 0) conf.cx--;  else if (conf.cy > 0) {
+        conf.cy--;
+        conf.cx = conf.row[conf.cy].size;
+      }
       break;
     case ARROW_RIGHT:
       // limit scrolling
-      if (row && conf.cx < row->size) conf.cx++;
+      if (row && conf.cx < row->size) conf.cx++; else if (row && conf.cx == row->size) {
+        conf.cy++;
+        conf.cx = 0;
+      }
       break;
     case ARROW_UP:
       if (conf.cy != 0) conf.cy--;
@@ -226,6 +232,9 @@ void editorMoveCursor(int key) {
       if (conf.cy < conf.nrows) conf.cy++;
       break;
   }
+  row = (conf.cy >= conf.nrows) ? NULL : &conf.row[conf.cy];
+  int rowlen = row ? row->size : 0;
+  if (conf.cx > rowlen) conf.cx = rowlen;
 }
 
 // prompt for signal processing
