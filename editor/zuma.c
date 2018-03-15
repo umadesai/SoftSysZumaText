@@ -1,3 +1,8 @@
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+#define _GNU_SOURCE
+
+
 #include <unistd.h>
 #include <errno.h>
 #include <termios.h>
@@ -6,6 +11,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <sys/ioctl.h>
+#include <sys/types.h>
 
 
 // define the envioronment of ctrl key
@@ -27,10 +33,17 @@ enum editorKey {
   PAGE_DOWN
 };
 
+struct editorRow {
+  int size;
+  char* chars;
+};
+
 struct editorConfig {
   int cx, cy;
   int screenrows;
   int screencols;
+  int nrows;
+  struct editorRow row;
   struct termios orig_termios;
 } conf;
 
@@ -45,6 +58,32 @@ void die(const char *s) {
   perror(s);
   exit(1);
 }
+conf.nrows == 0 && 
+void editorOpen(char* filename) {
+  FILE *fp = fopen(filename, "r");
+  if (!fp) die("fopen");
+
+  // read from the file
+  char *line = NULL;
+  size_t linecap = 0;
+  ssize_t linelen;
+  linelen = getline(&line, &linecap, fp);
+  if (linelen != -1) {
+    while (linelen > 0 && (line[linelen - 1] == '\n' ||
+                           line[linelen - 1] == '\r'))
+      linelen--;
+
+    conf.row.size = linelen;
+    conf.row.chars = malloc(linelen + 1);
+    memcpy(conf.row.chars, line, linelen);
+    conf.row.chars[linelen] = '\0';
+    conf.nrows = 1;
+  }
+  free(line);
+  fclose(fp);
+}
+
+
 
 // disable raw mode at exit
 void disableRawMode(){
@@ -211,6 +250,7 @@ int editorProcessKeyPress(){
 void initEditor() {
   conf.cx = 0;
   conf.cy = 0;
+  conf.nrows = 0;
   if (getWindowSize(&conf.screenrows, &conf.screencols) == -1) die("getWindowSize");
 }
 
@@ -219,20 +259,26 @@ void initEditor() {
 void editorDrawRows(struct abuf *ab) {
   int y;
   for (y = 0; y < conf.screenrows; y++) {
-    if (y == conf.screenrows / 3) {
-      char welcome[80];
-      int welcomelen = snprintf(welcome, sizeof(welcome),
-        "Kilo editor -- version %s", ZUMA_VERSION);
-      if (welcomelen > conf.screencols) welcomelen = conf.screencols;
-      int padding = (conf.screencols - welcomelen) / 2;
-      if (padding) {
+    if (y >= conf.nrows) {
+      if (conf.nrows == 0 && y == conf.screenrows / 3) {
+        char welcome[80];
+        int welcomelen = snprintf(welcome, sizeof(welcome),
+          "ZUMA editor -- version %s", ZUMA_VERSION);
+        if (welcomelen > conf.screencols) welcomelen = conf.screencols;
+        int padding = (conf.screencols - welcomelen) / 2;
+        if (padding) {
+          abAppend(ab, "~", 1);
+          padding--;
+        }
+        while (padding--) abAppend(ab, " ", 1);
+        abAppend(ab, welcome, welcomelen);
+      } else {
         abAppend(ab, "~", 1);
-        padding--;
       }
-      while (padding--) abAppend(ab, " ", 1);
-      abAppend(ab, welcome, welcomelen);
     } else {
-      abAppend(ab, "~", 1);
+      int len = conf.row.size;
+      if (len > conf.screencols) len = conf.screencols;
+      abAppend(ab, conf.row.chars, len);
     }
     // clear lines one at a time
     abAppend(ab, "\x1b[K", 3);
@@ -263,9 +309,11 @@ void editorRefreshScreen(){
   abFree(&ab);
 }
 
-int main(){
+int main(int argc, char** argv)
+{
   enableRawMode();
   initEditor();
+  if (argc >= 2) editorOpen(argv[1]);
   int response;
   do {
     editorRefreshScreen();
