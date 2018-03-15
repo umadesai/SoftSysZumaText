@@ -10,8 +10,10 @@
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <time.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
+#include <stdarg.h>
 
 
 // define the envioronment of ctrl key
@@ -48,6 +50,9 @@ struct editorConfig {
   int screenrows, screencols;
   int nrows;
   struct editorRow* row;
+  char *filename;
+  char statusmsg[80];
+  time_t statusmsg_time;
   struct termios orig_termios;
 } conf;
 
@@ -113,6 +118,10 @@ void editorAppendRow(char *line, size_t linelen) {
 }
 
 void editorOpen(char* filename) {
+
+  free(conf.filename);
+  conf.filename = strdup(filename);
+
   FILE *fp = fopen(filename, "r");
   if (!fp) die("fopen");
 
@@ -283,7 +292,7 @@ int editorProcessKeyPress(){
       conf.cx = 0;
       break;
     case END_KEY:
-      conf.cx = conf.screencols - 1;
+      if (conf.cy < conf.nrows) conf.cx = conf.row[conf.cy].size;
       break;
 
     case ARROW_UP:
@@ -296,6 +305,12 @@ int editorProcessKeyPress(){
     case PAGE_UP:
     case PAGE_DOWN:
     {
+      if (c == PAGE_UP) {
+        conf.cy = conf.rowoff;
+      } else if (c == PAGE_DOWN) {
+        conf.cy = conf.rowoff + conf.screenrows - 1;
+        if (conf.cy > conf.nrows) conf.cy = conf.nrows;
+      }
       int times = conf.screenrows;
       while (times--) editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
     }
@@ -304,12 +319,35 @@ int editorProcessKeyPress(){
   return 0;
 }
 
+void editorDrawMessageBar(struct abuf *ab) {
+  abAppend(ab, "\x1b[K", 3);
+  int msglen = strlen(conf.statusmsg);
+  if (msglen > conf.screencols) msglen = conf.screencols;
+  if (msglen && time(NULL) - conf.statusmsg_time < 5)
+    abAppend(ab, conf.statusmsg, msglen);
+}
+
+
+//std arg
+void editorSetStatusMessage(const char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  vsnprintf(conf.statusmsg, sizeof(conf.statusmsg), fmt, ap);
+  va_end(ap);
+  conf.statusmsg_time = time(NULL);
+}
+
 void initEditor() {
   conf.rx = conf.cx = conf.cy = 0;
   conf.nrows = 0;
   conf.rowoff = conf.coloff = 0;
   conf.row = NULL;
+  conf.filename = NULL;
+  conf.statusmsg[0] = '\0';
+  conf.statusmsg_time = 0;
+
   if (getWindowSize(&conf.screenrows, &conf.screencols) == -1) die("getWindowSize");
+  conf.screenrows -= 2;
 }
 
 
@@ -342,9 +380,7 @@ void editorDrawRows(struct abuf *ab) {
     }
     // clear lines one at a time
     abAppend(ab, "\x1b[K", 3);
-    if (y < conf.screenrows - 1) {
-      abAppend(ab, "\r\n", 2);
-    }
+    abAppend(ab, "\r\n", 2);
   }
 }
 
@@ -370,6 +406,27 @@ void editorHScroll(){
   }
 }
 
+void editorDrawStatusBar(struct abuf *ab) {
+  abAppend(ab, "\x1b[7m", 4);
+  char status[80], rstatus[80];
+  int len = snprintf(status, sizeof(status), "%.20s - %d lines",
+    conf.filename ? conf.filename : "[New File]", conf.nrows);
+  int rlen = snprintf(rstatus, sizeof(rstatus), "%d/%d",conf.cy + 1, conf.nrows);
+  if (len > conf.screencols) len = conf.screencols;
+  abAppend(ab, status, len);
+  while (len < conf.screencols) {
+    if (conf.screencols - len == rlen) {
+      abAppend(ab, rstatus, rlen);
+      break;
+    } else {
+      abAppend(ab, " ", 1);
+      len++;
+    }
+  }
+  abAppend(ab, "\x1b[m", 3);
+  abAppend(ab, "\r\n", 2);
+}
+
 void editorRefreshScreen(){
   editorVScroll();
   editorHScroll();
@@ -379,6 +436,8 @@ void editorRefreshScreen(){
   abAppend(&ab, "\x1b[H", 3);
 
   editorDrawRows(&ab);
+  editorDrawStatusBar(&ab);
+  editorDrawMessageBar(&ab);
 
   // move the cursor to .cx,.cy position
   char buf[32];
@@ -401,6 +460,8 @@ int main(int argc, char** argv)
   initEditor();
   if (argc >= 2) editorOpen(argv[1]);
   int response;
+  editorSetStatusMessage("HELP: Ctrl-Q = quit");
+
   do {
     editorRefreshScreen();
     response = editorProcessKeyPress();
