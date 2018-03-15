@@ -100,9 +100,13 @@ void editorUpdateRow(struct editorRow *row) {
   row->rsize = index;
 }
 
-void editorAppendRow(char *line, size_t linelen) {
+
+void editorInsertRow(int loc, char *s, size_t len) {
+  if (loc < 0 || loc > conf.nrows) return;
+
   conf.row = realloc(conf.row, sizeof(struct editorRow) * (conf.nrows + 1));
-  int loc = conf.nrows;
+  memmove(&conf.row[loc + 1], &conf.row[loc], sizeof(struct editorRow) * (conf.nrows - loc));
+
   conf.row[loc].size = linelen;
   conf.row[loc].chars = malloc(linelen + 1);
   memcpy(conf.row[loc].chars, line, linelen);
@@ -161,7 +165,7 @@ void editorOpen(char* filename) {
   while ((linelen = getline(&line, &linecap, fp)) != -1) {
     while (linelen > 0 && (line[linelen - 1] == '\n' ||
                            line[linelen - 1] == '\r'))  linelen--;
-    editorAppendRow(line, linelen);
+    editorAppendRow(conf.nrows, line, linelen);
 
   }
   free(line);
@@ -360,6 +364,22 @@ void editorMoveCursor(int key) {
 }
 
 
+void editorInsertNewline() {
+  if (conf.cx == 0) {
+    editorInsertRow(conf.cy, "", 0);
+  } else {
+    erow *row = &conf.row[conf.cy];
+    editorInsertRow(conf.cy + 1, &row->chars[conf.cx], row->size - conf.cx);
+    row = &conf.row[conf.cy];
+    row->size = conf.cx;
+    row->chars[row->size] = '\0';
+    editorUpdateRow(row);
+  }
+  conf.cy++;
+  conf.cx = 0;
+}
+
+
 void editorRowInsertChar(struct editorRow *row, int at, int c) {
   if (at < 0 || at > row->size) at = row->size;
   row->chars = realloc(row->chars, row->size + 2);
@@ -417,7 +437,7 @@ void editorDelChar() {
 
 void editorInsertChar(int c) {
   if (conf.cy == conf.nrows) {
-    editorAppendRow("", 0);
+    editorAppendRow(conf.nrows,"", 0);
   }
   editorRowInsertChar(&conf.row[conf.cy], conf.cx, c);
   conf.cx++;
@@ -432,7 +452,7 @@ int editorProcessKeyPress(){
   int c = editorReadKey();
   switch (c) {
     case '\r':
-
+      editorInsertNewline();
       break;
 
     case CTRL_KEY('q'):
