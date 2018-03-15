@@ -88,7 +88,7 @@ void editorUpdateRow(struct editorRow *row) {
   for (int j = 0; j < row->size; j++) {
     if (row->chars[j] == '\t') {
       row->render[index++] = ' ';
-      while (index % ZUMA_TAB_STOP  != 0) row->render[index++] = ' ';
+      while (index % ZUMA_TAB_STOP != 0) row->render[index++] = ' ';
     } else {
       row->render[index++] = row->chars[j];
     }
@@ -215,6 +215,7 @@ struct abuf {
   char *b;
   int len;
 };
+
 #define ABUF_INIT {NULL, 0}
 
 void abAppend(struct abuf *ab, const char *s, int len) {
@@ -373,15 +374,15 @@ void initEditor() {
   conf.statusmsg[0] = '\0';
   conf.statusmsg_time = 0;
 
-  if (getWindowSize(&conf.screenrows, &conf.screencols) == -1) die("getWindowSize");
+  if (getWindowSize(&conf.screenrows, &conf.screencols) == -1)
+    die("getWindowSize");
   conf.screenrows -= 2;
 }
 
 
 
 void editorDrawRows(struct abuf *ab) {
-  int y;
-  for (y = 0; y < conf.screenrows; y++) {
+  for (int y = 0; y < conf.screenrows; y++) {
     if (y + conf.rowoff >= conf.nrows) {
       if (y == conf.screenrows / 3) {
         char welcome[80];
@@ -473,7 +474,6 @@ void editorRefreshScreen(){
            conf.rx + 1 - conf.coloff);
   abAppend(&ab, buf, strlen(buf));
 
-  abAppend(&ab, "\x1b[H", 3);
   // hide the cursor when repainting
   abAppend(&ab, "\x1b[?25h", 6);
 
