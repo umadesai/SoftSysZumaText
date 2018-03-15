@@ -43,7 +43,7 @@ struct editorConfig {
   int screenrows;
   int screencols;
   int nrows;
-  struct editorRow row;
+  struct editorRow* row;
   struct termios orig_termios;
 } conf;
 
@@ -52,13 +52,32 @@ void editorClearScreen(){
   write(STDOUT_FILENO, "\x1b[H", 3);
 }
 
+
 void die(const char *s) {
   editorClearScreen();
   // prints error message and exits the program
   perror(s);
   exit(1);
 }
-conf.nrows == 0 && 
+
+
+void editorAppendRow(char *line, size_t linelen) {
+  conf.row = realloc(conf.row, sizeof(struct editorRow) * (conf.nrows + 1));
+  int loc = conf.nrows;
+  conf.row[loc].size = linelen;
+  conf.row[loc].chars = malloc(linelen + 1);
+  memcpy(conf.row[loc].chars, line, linelen);
+  conf.row[loc].chars[linelen] = '\0';
+  conf.nrows++;
+
+  // raw output
+  // conf.row.size = linelen;
+  // conf.row.chars = malloc(linelen + 1);
+  // memcpy(conf.row.chars, line, linelen);
+  // conf.row.chars[linelen] = '\0';
+  // conf.nrows = 1;
+}
+
 void editorOpen(char* filename) {
   FILE *fp = fopen(filename, "r");
   if (!fp) die("fopen");
@@ -67,22 +86,15 @@ void editorOpen(char* filename) {
   char *line = NULL;
   size_t linecap = 0;
   ssize_t linelen;
-  linelen = getline(&line, &linecap, fp);
-  if (linelen != -1) {
+  while ((linelen = getline(&line, &linecap, fp)) != -1) {
     while (linelen > 0 && (line[linelen - 1] == '\n' ||
-                           line[linelen - 1] == '\r'))
-      linelen--;
+                           line[linelen - 1] == '\r'))  linelen--;
+    editorAppendRow(line, linelen);
 
-    conf.row.size = linelen;
-    conf.row.chars = malloc(linelen + 1);
-    memcpy(conf.row.chars, line, linelen);
-    conf.row.chars[linelen] = '\0';
-    conf.nrows = 1;
   }
   free(line);
   fclose(fp);
 }
-
 
 
 // disable raw mode at exit
@@ -251,6 +263,7 @@ void initEditor() {
   conf.cx = 0;
   conf.cy = 0;
   conf.nrows = 0;
+  conf.row = NULL;
   if (getWindowSize(&conf.screenrows, &conf.screencols) == -1) die("getWindowSize");
 }
 
@@ -260,7 +273,7 @@ void editorDrawRows(struct abuf *ab) {
   int y;
   for (y = 0; y < conf.screenrows; y++) {
     if (y >= conf.nrows) {
-      if (conf.nrows == 0 && y == conf.screenrows / 3) {
+      if (y == conf.screenrows / 3) {
         char welcome[80];
         int welcomelen = snprintf(welcome, sizeof(welcome),
           "ZUMA editor -- version %s", ZUMA_VERSION);
@@ -276,9 +289,9 @@ void editorDrawRows(struct abuf *ab) {
         abAppend(ab, "~", 1);
       }
     } else {
-      int len = conf.row.size;
+      int len = conf.row[y].size;
       if (len > conf.screencols) len = conf.screencols;
-      abAppend(ab, conf.row.chars, len);
+      abAppend(ab, conf.row[y].chars, len);
     }
     // clear lines one at a time
     abAppend(ab, "\x1b[K", 3);
