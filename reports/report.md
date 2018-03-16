@@ -17,7 +17,7 @@ We want to:
 
 ## Resources
 
-The primary resource we used for getting started on the foundation of the project is the Kilo Snaptoken tutorial: https://viewsourcecode.org/snaptoken/kilo/. We also used the following sites for more context on implementing text editors in C:
+The primary resource we used for getting started on the foundation of the project is the Kilo Snaptoken tutorial: https://viewsourcecode.org/snaptoken/kilo/. We also frequently referenced StackOverflow and the following sites for more context on implementing text editors in C:
 
 - http://cs241.cs.illinois.edu/text_editor.html
 
