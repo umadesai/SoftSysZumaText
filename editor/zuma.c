@@ -22,9 +22,7 @@
 
 #define DRAW_TILDES(str, n_bytes) write(STDOUT_FILENO, str, (n_bytes))
 
-#define ZUMA_VERSION "0.0.1"
 #define ZUMA_TAB_STOP 4
-#define KILO_QUIT_TIMES 2
 
 enum editorKey {
   BACKSPACE = 127,
@@ -748,7 +746,7 @@ void editorInsertChar(int c) {
 
 // prompt for signal processing
 int editorProcessKeyPress(){
-  static int quit_times = KILO_QUIT_TIMES;
+  static int dirty_q = 0;
   int c = editorReadKey();
   switch (c) {
     case '\r':
@@ -756,15 +754,22 @@ int editorProcessKeyPress(){
       break;
 
     case CTRL_KEY('q'):
-      if (conf.dirty && quit_times > 0) {
+      if (conf.dirty) {
         editorSetStatusMessage("WARNING!!! File has unsaved changes. "
-                               "Press Ctrl-Q %d more time to quit.",
-                               quit_times);
-        quit_times--;
+                               "Press Ctrl-C to quit.",
+                               NULL);
+        dirty_q = 1;
         return 0;
       }
       editorClearScreen();
       return -1;
+
+
+    case CTRL_KEY('c'):
+      if (dirty_q) {
+        editorClearScreen();
+        return -1;
+      }
 
     case CTRL_KEY('f'):
       editorFind();
@@ -777,6 +782,7 @@ int editorProcessKeyPress(){
     case HOME_KEY:
       conf.cx = 0;
       break;
+
     case END_KEY:
       if (conf.cy < conf.nrows) conf.cx = conf.row[conf.cy].size;
       break;
@@ -788,11 +794,9 @@ int editorProcessKeyPress(){
       editorDelChar();
       break;
 
-
     case CTRL_KEY('l'):
     case '\x1b':
       break;
-
 
     case ARROW_UP:
     case ARROW_DOWN:
@@ -820,7 +824,7 @@ int editorProcessKeyPress(){
       break;
 
   }
-  quit_times = KILO_QUIT_TIMES;
+  dirty_q = 0;
   return 0;
 }
 
@@ -858,21 +862,7 @@ void editorDrawRows(struct abuf *ab) {
   for (int y = 0; y < conf.screenrows; y++) {
     int filerow = y + conf.rowoff;
     if (y + conf.rowoff >= conf.nrows) {
-      if (y == conf.screenrows / 3) {
-        char welcome[80];
-        int welcomelen = snprintf(welcome, sizeof(welcome),
-          "ZUMA editor -- version %s", ZUMA_VERSION);
-        if (welcomelen > conf.screencols) welcomelen = conf.screencols;
-        int padding = (conf.screencols - welcomelen) / 2;
-        if (padding) {
-          abAppend(ab, "~", 1);
-          padding--;
-        }
-        while (padding--) abAppend(ab, " ", 1);
-        // abAppend(ab, welcome, welcomelen);
-      } else {
-        abAppend(ab, "~", 1);
-      }
+      abAppend(ab, "~", 1);
     } else {
       // adjustment
       int len = conf.row[y+conf.rowoff].rsize - conf.coloff;
