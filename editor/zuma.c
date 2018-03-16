@@ -209,7 +209,7 @@ void editorSave() {
     if (!conf.filename) return;
   }
   editorSelectSyntaxHighlight();
-  
+
   int len;
   char *buf = editorRowsToString(&len);
   int fd = open(conf.filename, O_RDWR | O_CREAT, 0644);
@@ -323,6 +323,11 @@ void editorSelectSyntaxHighlight() {
       if ((is_ext && ext && !strcmp(ext, s->filematch[i])) ||
           (!is_ext && strstr(conf.filename, s->filematch[i]))) {
         conf.syntax = s;
+
+        int filerow;
+        for (filerow = 0; filerow < conf.nrows; filerow++) {
+          editorUpdateSyntax(&conf.row[filerow]);
+        }
         return;
       }
       i++;
