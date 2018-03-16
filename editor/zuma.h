@@ -2,7 +2,7 @@
 #define _ZUMA_H
 
 struct editorRow;
-char *editorPrompt(char*);
+char *editorPrompt(char *, void (*callback)(char *, int));
 void editorSelectSyntaxHighlight();
 void editorUpdateSyntax(struct editorRow*);
 
