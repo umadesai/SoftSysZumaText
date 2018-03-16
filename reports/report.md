@@ -27,11 +27,11 @@ http://www.drdobbs.com/architecture-and-design/text-editors-algorithms-and-archi
 
 We were successful in building a text editor with vim-like interface and emacs-like shortcuts. We implemented each of the following capabilities in our text editor:
 
-User interface
+- User interface
 
-Input and output
+- Input and output
 
-Status bar 
+- Status bar 
 
 **Try it for yourself!** To run our text editor, clone our repository, navigate to the editor folder, and run the following commands in the Unix command line:
 
