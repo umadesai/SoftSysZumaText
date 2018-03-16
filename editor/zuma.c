@@ -14,6 +14,7 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <stdarg.h>
+#include "zuma.h"
 
 
 // define the envioronment of ctrl key
@@ -46,13 +47,13 @@ enum editorHighlight {
 
 #define HL_HIGHLIGHT_NUMBERS (1<<0)
 
-typedef struct editorRow {
+struct editorRow {
   int size;
   int rsize;
   char* chars;
   char* render;
   unsigned char *hl;
-} erow;
+};
 
 struct editorSyntax {
   char *filetype;
@@ -75,7 +76,7 @@ struct editorConfig {
   struct termios orig_termios;
 } conf;
 
-char *editorPrompt(char *prompt);
+
 
 /*** filetypes ***/
 char *C_HL_extensions[] = { ".c", ".h", ".cpp", NULL };
@@ -289,7 +290,7 @@ int getWindowSize(int *n_row, int *n_col) {
 
 
 /*** syntax highlighting ***/
-void editorUpdateSyntax(erow *row) {
+void editorUpdateSyntax(struct editorRow* row) {
   row->hl = realloc(row->hl, row->rsize);
   memset(row->hl, HL_NORMAL, row->rsize);
 
