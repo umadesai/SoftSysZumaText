@@ -1,4 +1,4 @@
-## ZumaText Project Report
+# ZumaText Project Report
 
 Uma Desai & Zhengyang Feng
 
@@ -28,6 +28,8 @@ The primary resource we used for getting started on the foundation of the projec
 We were successful in building a text editor with vim-like interface and emacs-like shortcuts. We implemented each of the following capabilities in our text editor:
 
 - User interface
+
+![User interface](https://github.com/umadesai/SoftSysZumaText/blob/master/reports/interface.png)
 
 - Input and output
 
