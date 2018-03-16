@@ -216,7 +216,6 @@ void editorSetStatusMessage(const char *fmt, ...) {
 
 
 void editorOpen(char* filename) {
-
   free(conf.filename);
   conf.filename = strdup(filename);
 

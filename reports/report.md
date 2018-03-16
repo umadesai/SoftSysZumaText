@@ -15,6 +15,13 @@ We want to:
 
 - Learn how to communicate the program with keyboard and mouse like emacs editor, including shortcuts.
 
+- Learn more about advanced C features in UNIX, such as terminal environment, argument processing
+
+- Learn how to organize large project and implement simple OOP, especially with highly interdependent functionalities
+
+- Learn how to extend features in existing large projects
+
+
 ## Resources
 
 The primary resource we used for getting started on the foundation of the project is the Kilo Snaptoken tutorial: https://viewsourcecode.org/snaptoken/kilo/. We also frequently referenced StackOverflow and the following sites for more context on implementing text editors in C:
@@ -37,6 +44,10 @@ We were successful in building a text editor with vim-like interface and emacs-l
 
 - Open, new, and save files
 
+- Search around
+
+- Keyword and comment highlight
+
 **Try it for yourself!** To run our text editor, clone our repository, navigate to the editor folder, and run the following commands in the Unix command line:
 
 make
@@ -46,5 +57,5 @@ make
 
 ## Reflection
 
-Even though we did not meet our stretch goal of implementing advanced features of a text editor in our program, we arrived at our original goal of implementing all of the basic features of a minimal editor. During this process, we were not only able to develop a fully functioning text editor, but also learn many new C tools by using UNIX libraries like termios, fcntl, errno, and ioctl. We were also able to practice implementing concepts we’ve been learning in class, such as using Makefiles, structs, enums, pointers, and dynamic memory allocation.
+We arrived at our original goal of implementing all of the basic features of a minimal editor. We also learnt to do simple customization for our preferred features. During this process, we were not only able to develop a fully functioning text editor, but also learn many new C tools by using UNIX libraries like termios, fcntl, errno, and ioctl. We were also able to practice implementing concepts we’ve been learning in class, such as using Makefiles, structs, enums, pointers, and dynamic memory allocation.
 
