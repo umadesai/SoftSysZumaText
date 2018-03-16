@@ -38,12 +38,18 @@ enum editorKey {
   PAGE_DOWN
 };
 
-struct editorRow {
+enum editorHighlight {
+  HL_NORMAL = 0,
+  HL_NUMBER
+};
+
+typedef struct editorRow {
   int size;
   int rsize;
   char* chars;
   char* render;
-};
+  unsigned char *hl;
+} erow;
 
 struct editorConfig {
   int cx, cy;
@@ -100,6 +106,9 @@ void editorUpdateRow(struct editorRow *row) {
   }
   row->render[index] = '\0';
   row->rsize = index;
+
+
+  editorUpdateSyntax(row);
 }
 
 
@@ -116,14 +125,10 @@ void editorInsertRow(int loc, char *line, size_t linelen) {
 
   conf.row[loc].rsize = 0;
   conf.row[loc].render = NULL;
+  conf.row[loc].hl = NULL;
   editorUpdateRow(&conf.row[loc]);
   conf.nrows++; conf.dirty++;
-  // raw output
-  // conf.row.size = linelen;
-  // conf.row.chars = malloc(linelen + 1);
-  // memcpy(conf.row.chars, line, linelen);
-  // conf.row.chars[linelen] = '\0';
-  // conf.nrows = 1;
+
 }
 
 char *editorRowsToString(int *buflen) {
@@ -255,19 +260,26 @@ int getWindowSize(int *n_row, int *n_col) {
     *n_row = ws.ws_row;
     return 0;
   }
+}
 
-  // int flag = 0;
-  // if ((flag = ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws)) != 0) {
-  //   // TODO: Unsupported OS
-  //   return flag;
-  // } else if (ws.ws_col == 0) {
-  //   // TODO: System panic
-  //   return -1;
-  // } else {
-  //   *n_col = ws.ws_col;
-  //   *n_row = ws.ws_row;
-  //   return 0;
-  // }
+
+/*** syntax highlighting ***/
+void editorUpdateSyntax(erow *row) {
+  row->hl = realloc(row->hl, row->rsize);
+  memset(row->hl, HL_NORMAL, row->rsize);
+  int i;
+  for (i = 0; i < row->rsize; i++) {
+    if (isdigit(row->render[i])) {
+      row->hl[i] = HL_NUMBER;
+    }
+  }
+}
+
+int editorSyntaxToColor(int hl) {
+  switch (hl) {
+    case HL_NUMBER: return 31;
+    default: return 37;
+  }
 }
 
 // append buffer
@@ -406,6 +418,7 @@ void editorRowDelChar(struct editorRow *row, int loc) {
 void editorFreeRow(struct editorRow *row) {
   free(row->render);
   free(row->chars);
+  free(row->hl);
 }
 void editorDelRow(int loc) {
   if (loc < 0 || loc >= conf.nrows) return;
@@ -556,6 +569,7 @@ void initEditor() {
 
 void editorDrawRows(struct abuf *ab) {
   for (int y = 0; y < conf.screenrows; y++) {
+    int filerow = y + conf.rowoff;
     if (y + conf.rowoff >= conf.nrows) {
       if (y == conf.screenrows / 3) {
         char welcome[80];
@@ -577,7 +591,30 @@ void editorDrawRows(struct abuf *ab) {
       int len = conf.row[y+conf.rowoff].rsize - conf.coloff;
       len = (len < 0) ? 0 : len;
       if (len > conf.screencols) len = conf.screencols;
-      abAppend(ab, &conf.row[y+conf.rowoff].render[conf.coloff], len);
+
+      char *c = &conf.row[filerow].render[conf.coloff];
+      unsigned char *hl = &conf.row[filerow].hl[conf.coloff];
+      int current_color = -1;
+      int j;
+      for (j = 0; j < len; j++) {
+        if (hl[j] == HL_NORMAL) {
+          if (current_color != -1) {
+            abAppend(ab, "\x1b[39m", 5);
+            current_color = -1;
+          }
+            abAppend(ab, &c[j], 1);
+        } else {
+          int color = editorSyntaxToColor(hl[j]);
+          if (color != current_color) {
+            current_color = color;
+            char buf[16];
+            int clen = snprintf(buf, sizeof(buf), "\x1b[%dm", color);
+            abAppend(ab, buf, clen);
+          }
+          abAppend(ab, &c[j], 1);
+        }
+      }
+      abAppend(ab, "\x1b[39m", 5);
     }
     // clear lines one at a time
     abAppend(ab, "\x1b[K", 3);
