@@ -43,6 +43,9 @@ enum editorHighlight {
   HL_NUMBER
 };
 
+
+#define HL_HIGHLIGHT_NUMBERS (1<<0)
+
 typedef struct editorRow {
   int size;
   int rsize;
@@ -50,6 +53,12 @@ typedef struct editorRow {
   char* render;
   unsigned char *hl;
 } erow;
+
+struct editorSyntax {
+  char *filetype;
+  char **filematch;
+  int flags;
+};
 
 struct editorConfig {
   int cx, cy;
@@ -62,10 +71,22 @@ struct editorConfig {
   int dirty;
   char statusmsg[80];
   time_t statusmsg_time;
+  struct editorSyntax *syntax;
   struct termios orig_termios;
 } conf;
 
 char *editorPrompt(char *prompt);
+
+/*** filetypes ***/
+char *C_HL_extensions[] = { ".c", ".h", ".cpp", NULL };
+struct editorSyntax HLDB[] = {
+  {
+    "c",
+    C_HL_extensions,
+    HL_HIGHLIGHT_NUMBERS
+  },
+};
+#define HLDB_ENTRIES (sizeof(HLDB) / sizeof(HLDB[0]))
 
 void editorClearScreen(){
   write(STDOUT_FILENO, "\x1b[2J", 4);
@@ -162,6 +183,8 @@ void editorOpen(char* filename) {
   free(conf.filename);
   conf.filename = strdup(filename);
 
+  editorSelectSyntaxHighlight();
+
   FILE *fp = fopen(filename, "r");
   if (!fp) die("fopen");
 
@@ -185,6 +208,8 @@ void editorSave() {
     conf.filename = editorPrompt("Save as: %s (ESC to cancel)");
     if (!conf.filename) return;
   }
+  editorSelectSyntaxHighlight();
+  
   int len;
   char *buf = editorRowsToString(&len);
   int fd = open(conf.filename, O_RDWR | O_CREAT, 0644);
@@ -267,6 +292,10 @@ int getWindowSize(int *n_row, int *n_col) {
 void editorUpdateSyntax(erow *row) {
   row->hl = realloc(row->hl, row->rsize);
   memset(row->hl, HL_NORMAL, row->rsize);
+
+  if (conf.syntax == NULL) return;
+
+
   int i;
   for (i = 0; i < row->rsize; i++) {
     if (isdigit(row->render[i])) {
@@ -279,6 +308,25 @@ int editorSyntaxToColor(int hl) {
   switch (hl) {
     case HL_NUMBER: return 31;
     default: return 37;
+  }
+}
+
+void editorSelectSyntaxHighlight() {
+  conf.syntax = NULL;
+  if (conf.filename == NULL) return;
+  char *ext = strrchr(conf.filename, '.');
+  for (unsigned int j = 0; j < HLDB_ENTRIES; j++) {
+    struct editorSyntax *s = &HLDB[j];
+    unsigned int i = 0;
+    while (s->filematch[i]) {
+      int is_ext = (s->filematch[i][0] == '.');
+      if ((is_ext && ext && !strcmp(ext, s->filematch[i])) ||
+          (!is_ext && strstr(conf.filename, s->filematch[i]))) {
+        conf.syntax = s;
+        return;
+      }
+      i++;
+    }
   }
 }
 
@@ -559,6 +607,7 @@ void initEditor() {
   conf.filename = NULL;
   conf.statusmsg[0] = '\0';
   conf.statusmsg_time = 0;
+  conf.syntax = NULL;
 
   if (getWindowSize(&conf.screenrows, &conf.screencols) == -1)
     die("getWindowSize");
@@ -652,7 +701,10 @@ void editorDrawStatusBar(struct abuf *ab) {
   int len = snprintf(status, sizeof(status), "%.20s - %d lines %s",
     conf.filename ? conf.filename : "[New File]",
     conf.nrows, conf.dirty ? "*" : "");
-  int rlen = snprintf(rstatus, sizeof(rstatus), "%d/%d",conf.cy + 1, conf.nrows);
+
+  int rlen = snprintf(rstatus, sizeof(rstatus), "%s | %d/%d",
+    conf.syntax ? conf.syntax->filetype : "no ft", conf.cy + 1, conf.nrows);
+
   if (len > conf.screencols) len = conf.screencols;
   abAppend(ab, status, len);
   while (len < conf.screencols) {
