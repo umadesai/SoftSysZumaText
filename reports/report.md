@@ -35,6 +35,8 @@ We were successful in building a text editor with vim-like interface and emacs-l
 
 - Status bar 
 
+- Open, new, and save files
+
 **Try it for yourself!** To run our text editor, clone our repository, navigate to the editor folder, and run the following commands in the Unix command line:
 
 make
