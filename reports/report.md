@@ -13,13 +13,13 @@ We want to:
 
 - Learn how to build a text editor from scratch using system calls and other functions.
 
-- Learn how to communicate the program with keyboard and mouse like emacs editor, including shortcuts.
+- Learn how to communicate with the program using a keyboard, mouse, and shortcuts like the emacs editor.
 
-- Learn more about advanced C features in UNIX, such as terminal environment, argument processing.
+- Learn more about advanced C features in UNIX, such as the terminal environment and argument processing.
 
-- Learn how to organize large project and implement simple OOP, especially with highly interdependent functionalities.
+- Learn how to organize a large project and implement simple OOP, especially with highly interdependent functions.
 
-- Learn how to extend features in existing large projects.
+- Learn how to extend features from large, existing projects.
 
 
 ## Resources
@@ -32,7 +32,7 @@ The primary resource we used for getting started on the foundation of the projec
 
 ## Outcomes
 
-We were successful in building a text editor with vim-like interface and emacs-like shortcuts. We implemented each of the following capabilities in our text editor:
+We were successful in building a text editor with a vim-like interface and emacs-like shortcuts. We implemented each of the following capabilities in our text editor:
 
 - User interface
 
@@ -44,11 +44,11 @@ We were successful in building a text editor with vim-like interface and emacs-l
 
 - Open, new, and save files
 
-- Search around
+- Search
 
 - Keyword and comment highlight
 
-- Shortcuts for these commands
+- Command shortcuts
 
 **Try it for yourself!** To run our text editor, clone our repository, navigate to the editor folder, and run the following commands in the Unix command line:
 
@@ -59,9 +59,9 @@ make
 
 ## Reflection
 
-We arrived at our original goal of implementing all of the basic features of a minimal editor. We also learnt to do simple customization for our preferred features. During this process, we were not only able to develop a fully functioning text editor, but also learn many new C tools by using UNIX libraries like termios, fcntl, errno, and ioctl. We were also able to practice implementing concepts we’ve been learning in class, such as using Makefiles, structs, enums, pointers, and dynamic memory allocation.
+We were able to meet our stretch goal of implementing all the basic features of a minimal text editor, as well as a few custom, more advanced features! During this process, we were not only able to develop a fully functioning text editor, but also learn many new C tools by using UNIX libraries like termios, fcntl, errno, and ioctl. We were also able to practice implementing concepts we’ve been learning in class, such as using Makefiles, structs, enums, pointers, and dynamic memory allocation.
 
 ## Audience
 
-The implemetation of text editor consists of a large number of low-level functions. They are UNIX like, making Windows users hard to comply with the instructions. Also, the document of kilo is professionally written, which makes the editor easy to fork. Other readers of kilo editor may seek for other extentions like copy and paste. 
+The implemetation of our text editor consists of a large number of low-level functions. They are focused on an audience of UNIX users. What's great is that the readers of this project or the Kilo tutorial should be able to easily fork the repo and add some of their own extensions, like custom shortcuts, colors, or line numbers. 
 
