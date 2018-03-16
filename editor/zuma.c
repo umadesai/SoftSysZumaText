@@ -262,8 +262,18 @@ void editorFindCallback(char *query, int key) {
 }
 
 void editorFind() {
+  int saved_cx = conf.cx;
+  int saved_cy = conf.cy;
+  int saved_coloff = conf.coloff;
+  int saved_rowoff = conf.rowoff;
   char *query = editorPrompt("Search: %s (ESC to cancel)", editorFindCallback);
-  if (!query) return;
+  if (!query) {
+    conf.cx = saved_cx;
+    conf.cy = saved_cy;
+    conf.coloff = saved_coloff;
+    conf.rowoff = saved_rowoff;
+  return;
+}
   free(query);
 }
 
